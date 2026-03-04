@@ -1,0 +1,118 @@
+L'esercitazione ha come obiettivo la configurazione di un Virtual Host HTTPS utilizzando Nginx all'interno di un container Docker. Quindi creo un 
+certificato per la realizzazione di un servizio HTTPS.
+Ho configurato il mapping delle porte nel docker-compose:
+ ports:
+     - "4443:443"
+perché oltre ad avere il vantaggio di evitare collisioni, rendiamo più difficile ad un attaccante capire che servizio offre quella determinata porta, poiché 
+essa non è una dei servizi di default.
+____________________________________________________________________________________________________________________________________________________________
+Genero il certificato con una durata di 365 giorni usando lo standard x509
+
+openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out server.crt -keyout server.key
+..+.......+.........+..+...+....+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*........+......+.+......
+...
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:IT
+State or Province Name (full name) [Some-State]:Parma
+Locality Name (eg, city) []:
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:UniPR
+Organizational Unit Name (eg, section) []:Corso RETI
+Common Name (e.g. server FQDN or YOUR name) []:10.10.10.101
+Email Address []:federico.colli1@studenti.unipr.it
+____________________________________________________________________________________________________________________________________________________________
+Controllo che i campi inseriti siano corretti e che il certificato sia stato generato
+
+openssl x509 -in server.crt -subject -noout
+subject=C = IT, ST = Parma, O = UniPR, OU = Corso RETI, CN = 10.10.10.101, emailAddress = federico.colli1@studenti.unipr.it
+____________________________________________________________________________________________________________________________________________________________
+Verifico se in entrambi i container il servizio https sia avviato e visibile
+
+netstat -tupan
+server {
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+	...
+}
+
+tcp6       0      0 :::443                  :::*                    LISTEN      350/nginx: master p
+
+nmap 10.10.10.101
+
+PORT    STATE SERVICE
+...
+443/tcp open  https
+MAC Address: F6:17:25:12:EE:85 (Unknown)
+____________________________________________________________________________________________________________________________________________________________
+Utilizzo wget specificando di ignorare il certificato (--no-check-certificate), poiché essendo self-signed causerebbe un errore. Il comando restituisce 
+comunque un avviso che il certificato non può essere verificato
+
+wget -d --no-check-certificate 
+Handshake successful; connected socket 3 to SSL handle 0x0000599ab91acdd0
+certificate:
+  subject: emailAddress=federico.colli1@studenti.unipr.it,CN=10.10.10.101,OU=Corso RETI,O=UniPR,ST=Parma,C=IT
+  issuer:  emailAddress=federico.colli1@studenti.unipr.it,CN=10.10.10.101,OU=Corso RETI,O=UniPR,ST=Parma,C=IT
+WARNING: cannot verify 10.10.10.101's certificate, issued by 'emailAddress=federico.colli1@studenti.unipr.it,CN=10.10.10.101,
+OU=Corso RETI,O=UniPR,ST=Parma,C=IT':
+  Self-signed certificate encountered.
+...
+---response end---
+200 OK
+
+index.html                      100%[====================================================>]      19  --.-KB/s    in 0s
+
+Se invece provo a verificare il certificato, il comando dà errore
+ERROR: cannot verify 10.10.10.101's certificate, issued by 'emailAddress=federico.colli1@studenti.unipr.it,CN=10.10.10.101,OU
+=Corso RETI,O=UniPR,ST=Parma,C=IT':
+  Self-signed certificate encountered.
+____________________________________________________________________________________________________________________________________________________________
+curl -v --insecure 
+
+Connected to 10.10.10.101 (10.10.10.101) port 443
+* ALPN: curl offers h2,http/1.1
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+...
+SSL certificate verify result: self-signed certificate (18), continuing anyway.
+*   Certificate level 0: Public key type RSA (4096/152 Bits/secBits), signed using sha256WithRSAEncryption
+...
+
+controllando il certificato
+
+SSL certificate problem: self-signed certificate
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it.
+____________________________________________________________________________________________________________________________________________________________
+Visualizzo a schermo l'header del pacchetto HTTP a livello di trasporto
+
+python3 https_client_transp.py -s 10.10.10.101 -p 443
+ server: 10.10.10.101  port: 443  uri: /index.html
+
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Thu, 08 Jan 2026 14:09:53 GMT
+Content-Type: text/html
+Content-Length: 19
+Last-Modified: Thu, 08 Jan 2026 13:55:08 GMT
+Connection: keep-alive
+ETag: "695fb73c-13"
+Accept-Ranges: bytes
+
+virtual host HTTPS
+____________________________________________________________________________________________________________________________________________________________
+python3 https_client_appl.py -s 10.10.10.101 -p 443
+
+ server: 10.10.10.101  port: 443  uri: /index.html
+Status: 200 and reason: OK
+virtual host HTTPS
+____________________________________________________________________________________________________________________________________________________________
+Utilizzando il browser dell'Host per connettersi a localhost:4443, si riceve un avviso d'accesso ad un sito non sicuro, poiché il server offre un certificato 
+self-signed. Dato che l'autorità emittente non è riconosciuta né dal browser né dal pc (certificato commerciale), allora viene giudicato non sicuro.
+

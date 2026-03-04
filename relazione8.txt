@@ -1,0 +1,13 @@
+Il server Nginx è stato configurato correttamente ed è esposto su Internet tramite Cloudflare Tunnel.
+
+Per l'accesso pubblico, è stato utilizzato l'endpoint nativo fornito dal tunnel (https://...trycloudflare.com). Sebbene fosse stato configurato un record CNAME sul dominio lab.10-https.abrdns.com per puntare al tunnel, l'accesso tramite questo dominio personalizzato non è possibile a causa di una limitazione del protocollo SSL/TLS.
+
+Poiché il tunnel Cloudflare termina la connessione cifrata (SSL Termination) sui propri server edge e la versione 'Quick Tunnel' non permette il caricamento di certificati personalizzati per domini di terze parti, si verifica un errore di SSL Handshake Failure (Protocollo non supportato). Anche l'ottenimento automatico dei certificati HTTPS tramite metodo standard non è stato possibile sempre per le limitazioni generate dal tunnel. Però il sito produceva sempre una connessione sicura https poiché essa era stata delegata a Cloudflare. Ho comunque scaricato i certificati senza la connessione diretta al server web. È stato lanciato il comando per richiedere i soli file del certificato, specificando di voler utilizzare la verifica tramite record DNS invece che tramite connessione web:
+
+certbot certonly --manual --preferred-challenges dns -d lab.10-https.abrdns.com
+
+Dopo aver accettato e inserito le informazioni necessarie ho inserito il token generato in un record DNS di tipo TXT. Infine Let's Encrypt ha verificato la presenza del record TXT corretto e ha rilasciato i certificati.
+
+L'unica soluzione per utilizzare il dominio personalizzato sarebbe stata possedere il dominio di secondo livello (root domain) per validarlo su Cloudflare, oppure utilizzare una connessione diretta (Port Forwarding), opzione scartata per motivi di sicurezza di rete. Cloudflare offre servizi di CDN o Reverse Proxy, quindi facendo collegare l'nginx ai loro server bypassavo le limitazioni imposte dal router di casa. Ho verificato sul router la procedura per creare nuove regole di routing, ma non ho voluto cambiarle per non creare problemi. Quindi ho optato per questo metodo alternativo. 
+
+In conclusione, ho delegato la terminazione SSL al Cloudflare Tunnel (SSL Offloading), mantenendo il container Nginx in ascolto sulla porta HTTP standard (80) e utilizzando l'indirizzo .trycloudflare.com per garantire un servizio accessibile e privo di errori di protocollo.

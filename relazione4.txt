@@ -1,0 +1,31 @@
+Attiviamo due container ns61 (server) e ns62 (client) e verifichiamo la configurazione Nginx di ns61, quindi attiviamo su ns61 un virtual host in ascolto sulla porta 81, con il supporto alle pagine dinamiche php. Attiviamo inoltre il forward della porta 81 sulla porta 8161 dell’host.
+Innanzitutto, all'interno di vh1.conf (configurazione server) troviamo le righe "listen 81;", "server_name vh1;" e "root /var/www/html/6-HTTP/;" che indicano all'avvio del server le informazioni necessarie per inizializzare il nostro servizio aggiuntivo, oltre a quello di default sulla porta 80. Questo file deve essere copiato all'interno della cartella /etc/nginx/site-available/ e creare un link o copiare il file anche all'interno di /etc/nginx/sites-enabled/. Questo per dichiarare il servizio e pubblicarlo. Per vedere se il servizio è in esecuzione in modo corretto facciamo un curl http://ns61:81/, che dovrà avere un riscontro in /var/log/nginx/access.log (10.10.10.2 - - [12/Nov/2025:15:08:01 +0000] "GET / HTTP/1.1" 200 78 "-" "curl/8.12.1"). Anche python3 http_client.py -s ns61 -p 81 -u /index.html dovrà scrivere nell'access.log se tutto è eseguito correttamente (10.10.10.2 - - [12/Nov/2025:15:19:01 +0000] "GET /index.html HTTP/1.1" 200 78 "-" "-"). Infine con netstat -tupan notiamo che, in effetti, sulla porta 81 c'è un servizio in esecuzione.
+
+
+__________________________________________________________________
+netstat -tupan
+
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      12/sshd: /usr/sbin/
+tcp        0      0 0.0.0.0:81              0.0.0.0:*               LISTEN      1/nginx: master pro
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      1/nginx: master pro
+tcp        0      0 127.0.0.11:33829        0.0.0.0:*               LISTEN      -
+tcp6       0      0 :::22                   :::*                    LISTEN      12/sshd: /usr/sbin/
+tcp6       0      0 :::80                   :::*                    LISTEN      1/nginx: master pro
+udp        0      0 127.0.0.11:34236        0.0.0.0:*                           -
+__________________________________________________________________
+curl http://ns61:81/
+
+<h1> VirtualHost 1 </h1>
+<h2> Federico Colli - 349189 </h2>
+ file index.html
+__________________________________________________________________
+python3 http_client.py -s ns61 -p 81 -u /index.html
+
+ server: ns61  port: 81  uri: /index.html
+Status: 200 and reason: OK
+<h1> VirtualHost 1 </h1>
+<h2> Federico Colli - 349189 </h2>
+ file index.html
+

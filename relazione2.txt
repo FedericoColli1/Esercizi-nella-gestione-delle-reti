@@ -1,0 +1,50 @@
+L'esercizio richiedeva la configurazione di tre elementi principali: un container client, uno server ed un bridge. Il bridge viene utilizzato per stabilire una sottorete isolata che ospita entrambi i container. Il server con IP statico e il client con uno dinamico (grazie al DHCP). E l'es consisteva nel far comunicare i due container e intercettare le informazioni che si trasmettono. Un altro concetto introdotto da questo esercizio è il port forwarding. Il port forwarding è una tecnica usata dal router che reindirizza le richieste di connessione da una specifica porta esterna ad una specifica porta interna. Questo è reso possibile grazie al NAT (Network Address Translation). Infine l'ultimo concetto è quello dei volumi di docker. In poche parole collegare cartelle/file all'interno di un container con l'esterno.
+
+
+Dopo aver caricato il compose e creato i container, sono entrato nel container ns22, a cui ho attaccato una bash. In cui ho scritto i vari comandi per comunicare con il server ns21.
+
+OUTPUT COMANDI
+-nmap ns21 
+
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-10-08 10:22 UTC
+Nmap scan report for ns21 (10.10.10.21)
+Host is up (0.000015s latency).
+rDNS record for 10.10.10.21: ns21.bridge10
+Not shown: 998 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+MAC Address: CA:CF:73:2E:9A:22 (Unknown)
+
+Nmap done: 1 IP address (1 host up) scanned in 0.21 seconds
+
+-curl http://ns21/test.html
+
+<H1> Corso Reti 2025/2026 <H1>
+<H2> Federico Colli - 349189 <H2>
+
+
+-ssh ubuntu@ns21
+
+ubuntu@ns21:~$ (ovvero ho avuto un accesso corretto al server, dove ho confermato e scritto la password)
+
+CATTURA TRAFFICO DI RETE
+
+GET /test.html HTTP/1.1
+Host: localhost:8021
+User-Agent: curl/8.12.1
+Accept: */*
+
+
+HTTP/1.1 200 OK
+Server: nginx/1.26.3 (Ubuntu)
+Date: Wed, 08 Oct 2025 10:49:00 GMT
+Content-Type: text/html
+Content-Length: 67
+Last-Modified: Thu, 02 Oct 2025 08:59:11 GMT
+Connection: keep-alive
+ETag: "68de3edf-43"
+Accept-Ranges: bytes
+
+<H1> Corso Reti 2025/2026 <H1>
+<H2> Federico Colli - 349189 <H2>

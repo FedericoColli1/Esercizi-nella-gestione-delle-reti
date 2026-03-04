@@ -1,0 +1,73 @@
+L'obiettivo è configurare la "Mutual Authentication", dove anche il server richiede al client di identificarsi tramite un certificato.
+________________________________________________________________________________________________________________________________
+Genero i file client.key: La Chiave Privata del Client (quella protetta da password).
+client.crt: Il Certificato del Client (Self-Signed).
+
+openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -out client.crt -keyout client.key
+
+......+.+..+...+.+...........+..................+....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+.
+...
++...+..+..........+..+......+...+.........+.......+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Enter PEM pass phrase:
+Verifying - Enter PEM pass phrase:
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:IT
+State or Province Name (full name) [Some-State]:Parma
+Locality Name (eg, city) []:
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:UniPR
+Organizational Unit Name (eg, section) []:Corso RETI
+Common Name (e.g. server FQDN or YOUR name) []:ns102
+Email Address []:federico.colli1@studenti.unipr.it
+________________________________________________________________________________________________________________________________
+curl -v --cert client.crt --key client.key --insecure 
+
+...
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519 / RSASSA-PSS
+* ALPN: server accepted http/1.1
+* Server certificate:
+*  subject: C=IT; ST=Parma; O=UniPR; OU=Corso RETI; CN=10.10.10.101; emailAddress=federico.colli1@studenti.unipr.it
+*  start date: Jan  8 13:59:45 2026 GMT
+*  expire date: Jan  8 13:59:45 2027 GMT
+*  issuer: C=IT; ST=Parma; O=UniPR; OU=Corso RETI; CN=10.10.10.101; emailAddress=federico.colli1@studenti.unipr.it
+*  SSL certificate verify result: self-signed certificate (18), continuing anyway.
+*   Certificate level 0: Public key type RSA (4096/152 Bits/secBits), signed using sha256WithRSAEncryption
+...
+________________________________________________________________________________________________________________________________
+curl -v --cert client.crt --key client.key --insecure 
+
+<HTML><BODY>
+Client Address: 10.10.10.2<BR> User Agent: curl/8.5.
+<BR> 
+SSL_CLIENT_S_DN: emailAddress=federico.colli1@studenti.unipr.it,CN=ns102,OU=Corso RETI,O=UniPR,ST=Parma,C=IT
+<BR> 
+SSL_CLIENT_VERIFY: FAILED:self-signed certificate
+<BR> 
+SSL_CLIENT_CIPHER: TLS_AES_256_GCM_SHA384<BR> SSL_CLIENT_PROTOCOL: TLSv1.3
+<BR> 
+08 Jan 2026 15:26:24
+</BODY></HTML>
+________________________________________________________________________________________________________________________________
+openssl pkcs12 -export -out client.p12 -inkey client.key -in client.crt
+
+Genero il file client.p12: il pacchetto PKCS12 che contiene sia client.key che client.crt per Windows.
+Adesso vado nella cartella C:\RETI2526\10-HTTPS e faccio doppio click sul file client.p12 così da installare in modo guidato il certificato.
+
+Successivamente faccio la ricerca nel browser del pc e seleziono il certificato che ho appena installato 
+ed il risultato è:
+
+Client Address: 10.10.10.1
+User Agent: Mozilla/5
+SSL_CLIENT_S_DN: emailAddress=federico.colli1@studenti.unipr.it,CN=ns102,OU=Corso RETI,O=UniPR,ST=Parma,C=IT
+SSL_CLIENT_VERIFY: FAILED:self-signed certificate
+SSL_CLIENT_CIPHER: TLS_AES_256_GCM_SHA384
+SSL_CLIENT_PROTOCOL: TLSv1.3
+08 Jan 2026 15:52:14
+
+Infine per sicurezza uso il comando certmgr per vedere la lista di certificati installati e elimino quello creato in questo esercizio.
